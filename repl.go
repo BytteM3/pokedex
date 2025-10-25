@@ -5,17 +5,21 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/BytteM3/pokedex/internal/pokecache"
 )
 
 type config struct {
 	nextURL string
 	prevURL string
+	cache   *pokecache.Cache
+	pokedex map[string]PokemonData
 }
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(cfg *config) error
+	callback    func(cfg *config, args []string) error
 }
 
 var commands map[string]cliCommand
@@ -46,6 +50,26 @@ func startRepl(cfg *config) error {
 			description: "displays the previous 20 locations",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name:        "explore",
+			description: "explores the area provided as argument",
+			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "tries to catch the pokemon",
+			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "inspects caught pokemon",
+			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "lists all caught pokemon",
+			callback:    commandPokedex,
+		},
 	}
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -53,13 +77,15 @@ func startRepl(cfg *config) error {
 	for {
 		fmt.Printf("Pokedex > ")
 		scanner.Scan()
-		userInput := cleanInput(scanner.Text())
-		if len(userInput) == 0 {
+		tokens := cleanInput(scanner.Text())
+		name := tokens[0]
+		args := tokens[1:]
+		if len(tokens) == 0 {
 			continue
 		}
-		command, exists := commands[userInput[0]]
+		command, exists := commands[name]
 		if exists {
-			command.callback(cfg)
+			command.callback(cfg, args)
 		} else {
 			fmt.Printf("Unknown command\n")
 		}

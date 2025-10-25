@@ -18,24 +18,34 @@ type namedAPIResource struct {
 	URL  string `json:"url"`
 }
 
-func commandMap(cfg *config) error {
+func commandMap(cfg *config, args []string) error {
 	url := cfg.nextURL
 	if url == "" {
 		url = "https://pokeapi.co/api/v2/location-area"
 	}
 
-	res, err := http.Get(url)
-	if err != nil {
-		return err
+	data, ok := cfg.cache.Get(url)
+	if !ok {
+		fmt.Println("------using network------")
+		res, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			return fmt.Errorf("bad status: %s", res.Status)
+		}
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		cfg.cache.Add(url, body)
+		data = body
 	}
-	defer res.Body.Close()
 
 	var locations locationAreaList
-
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 
 	if err := json.Unmarshal(data, &locations); err != nil {
 		return err
@@ -60,24 +70,33 @@ func commandMap(cfg *config) error {
 	return nil
 }
 
-func commandMapb(cfg *config) error {
+func commandMapb(cfg *config, args []string) error {
 	url := cfg.prevURL
 	if url == "" {
 		fmt.Println("You are on the first page")
 	}
 
-	res, err := http.Get(url)
-	if err != nil {
-		return err
+	data, ok := cfg.cache.Get(url)
+	if !ok {
+		res, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+
+		if res.StatusCode != http.StatusOK {
+			return fmt.Errorf("bad status: %s", res.Status)
+		}
+
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		cfg.cache.Add(url, body)
+		data = body
 	}
-	defer res.Body.Close()
 
 	var locations locationAreaList
-
-	data, err := io.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
 
 	if err := json.Unmarshal(data, &locations); err != nil {
 		return err
